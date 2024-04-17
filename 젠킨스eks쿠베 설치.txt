@@ -1,0 +1,69 @@
+
+-----------ec2 위에 젠킨스 올리기----------------
+
+java --version
+update-java-alternatives -l
+
+/usr/lib/jvm/java-1.17.0-openjdk-amd64 <- 복사
+
+vi ~/.bashrc
+맨아래 추가
+export JAVA_HOME ="/usr/lib/jvm/java-1.17.0-openjdk-amd64"
+export PATH=$PATH:$JAVA_HOME/bin
+저장후
+source ~/.bashrc
+echo $JAVA_HOME
+
+
+sudo apt install -y openjdk-17-jdk
+
+wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+
+sudo sh -c 'echo deb https://pkg.jenkins.io/debian-stable binary/ > \
+    /etc/apt/sources.list.d/jenkins.list'
+
+sudo apt-get update
+sudo apt-get install jenkins
+
+
+-----------이하  kubectl 설치----------------
+
+curl -LO  https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
+ll <- kubectl 생성확인
+sudo mv kubectl /usr/local/bin/kubectl
+sudo chmod +x /usr/local/bin/kubectl
+kubectl version -o yaml
+확인
+
+-----------이하  eksctl CLI 설치----------------
+curl --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv -v /tmp/eksctl /usr/local/bin
+eksctl version
+sudo apt -y install jq
+TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
+
+export AWS_REGION=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" --silent http://169.254.169.254/latest/meta-data/placement/region) && echo $AWS_REGION
+
+ap-northeast-2  <--이 부분이 출력되면 성공
+
+aws configure <- awscli 설정
+
+------클러스터, 노드그룹 생성-----
+
+eksctl create cluster \
+--name project05-02-eks-work-cluster \
+--vpc-private-subnets subnet-07a05d877cac022df,subnet-0f78d01cacddfd36b \
+--version 1.29 \
+--ssh-access \
+--ssh-public-key  project05-key \
+--without-nodegroup
+
+eksctl create nodegroup \
+--cluster project05-02-eks-work-cluster \
+--name project05-02-eks-work-nodes \
+--node-type t3.medium \
+--nodes 2 \
+--nodes-min 1 \
+--nodes-max 4 \
+--node-private-networking \
+--managed

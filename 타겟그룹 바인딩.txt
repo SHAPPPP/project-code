@@ -1,0 +1,25 @@
+-----노드포트 30100 보안그룹생성 --------
+NODE_INSTANCE_ID=$(kubectl get nodes -o custom-columns=Instance:.spec.providerID|cut -d / -f 5|tail -1)
+
+NODE_SG_ID=$(aws ec2 describe-instances \
+    --filters "Name=instance-id,Values=$NODE_INSTANCE_ID" \
+    --query "Reservations[*].Instances[*].SecurityGroups[*].GroupId" \
+    --output text)
+
+aws ec2 authorize-security-group-ingress \
+    --group-id $NODE_SG_ID \
+    --protocol tcp \
+    --port 30100 \
+    --source-group sg-05b2f60a101fdc2ff
+
+--------타겟그룹 바인딩-------
+
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: pet-clinic-service
+spec:
+  serviceRef:
+    name: project01-svc
+    port: 80
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:257307634175:targetgroup/project05-02-petc-nodes/fabc272655b2712f

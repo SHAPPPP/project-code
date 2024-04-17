@@ -1,0 +1,15 @@
+aws iam create-policy \
+    --policy-name project05-awslbc \
+    --policy-document file://iam_policy.json
+
+iam_policy.json <- aws 공식홈페이지 참조
+
+
+eksctl create iamserviceaccount \
+  --cluster=project05-02-eks-work-cluster \
+  --namespace=kube-system \
+  --name=aws-load-balancer-controller \
+  --role-name project05-awslbcrole \
+  --attach-policy-arn=arn:aws:iam::257307634175:policy/project05-awslbc \
+  --approve
+
